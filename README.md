@@ -82,7 +82,7 @@ docker build --tag arhumzafar/test-ml-score-api REST-api-with-flask
 ```
 Above, 'arhumzafar' is the name of the DockerHub account that I'll push the image to. <br>
 #### Testing
-To test that the image can be used to create a Docker container to operates correctly:
+To test that the image can be used to create a Docker container that operates correctly:
 
 ```docker
 docker run --rm --name test-api -p 5000:5000 -d arhumzafar/test-ml-score-api
