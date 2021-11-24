@@ -141,3 +141,26 @@ This will return something that similar to what's below:
 KubeDNS is running at https://kubernetes.docker.internal:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy`
 
 `To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.`
+<br>
+<br>
+
+### Installing Kubernetes via Minikube
+
+Using Mac OS X, follow the below steps to get Minikube up and running:
+- make sure the [Homebrew](https://brew.sh) package manager for OS X is installed; then,
+- install VirtualBox using, `brew cask install virtualbox` (you may need to approve installation via OS X System Preferences); and then,
+- install Minikube using, `brew cask install minikube`.
+
+To start the test cluster run,
+
+```bash
+minikube start --memory 4096
+```
+
+Where we have specified the minimum amount of memory required to deploy a single Seldon ML component. **Be patient** - Minikube may take a while to start. To test that the cluster is operational run,
+
+```bash
+kubectl cluster-info
+```
+
+Where `kubectl` is the standard Command Line Interface (CLI) client for interacting with the Kubernetes API (which was installed as part of Minikube, but is also available separately).
