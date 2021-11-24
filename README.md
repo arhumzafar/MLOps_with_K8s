@@ -164,3 +164,139 @@ kubectl cluster-info
 ```
 
 Where `kubectl` is the standard Command Line Interface (CLI) client for interacting with the Kubernetes API (which was installed as part of Minikube, but is also available separately).
+
+### Deploying the Containerized ML Model to K8s
+To begin to test our model scoring API, we first start by deploying the service within a K8s [Pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/), whose rollout is managed by a [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/), which in in-turn creates a [ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/) - a Kubernetes resource that ensures a minimum number of pods (or replicas), running our service are operational at any given time. This is achieved with,
+
+```bash
+kubectl create deployment test-ml-score-api --image=alexioannides/test-ml-score-api:latest
+```
+
+To check on the status of the deployment run,
+
+```bash
+kubectl rollout status deployment ml-score-api
+```
+
+And to see the pods that is has created run,
+
+```bash
+kubectl get pods
+```
+
+It is possible to use [port forwarding](https://en.wikipedia.org/wiki/Port_forwarding) to test an individual container without exposing it to the public internet. To use this, open a separate terminal and run (for example),
+
+```bash
+kubectl port-forward ml-score-api-szd4j 5000:5000
+```
+Now, `ml-score-api-szd4j` is the name of the pod currently active on the cluster, as determined from the `kubectl get pods` command. Then from your original terminal, to repeat our test request against the same container running on Kubernetes run,
+
+```bash
+curl http://localhost:5000/score \
+    --request POST \
+    --header "Content-Type: application/json" \
+    --data '{"X": [1, 2]}'
+```
+
+To expose the container as a (load balanced) [service](https://kubernetes.io/docs/concepts/services-networking/service/) to the outside world, we have to create a Kubernetes service that references it. This is achieved with the following command,
+
+```bash
+kubectl expose deployment ml-score-api --port 5000 --type=LoadBalancer --name ml-score-api-lb
+```
+
+If you are using Docker Desktop, then this will automatically emulate a load balancer at `http://localhost:5000`. To find where Minikube has exposed its emulated load balancer run,
+
+```bash
+minikube service list
+```
+Next, we test the application -- using Docker Desktop,
+```bash
+curl http://localhost:5000/score \
+    --request POST \
+    --header "Content-Type: application/json" \
+    --data '{"X": [1, 2]}'
+```
+
+Upon it's creation, one thing that I've learned is that neither Docker or Minikube setup a load balancer -- *which would be vital if this was done on the cloud*.
+
+### Getting Started & Configuring Multi-node Cluster on the Google Cloud Platform.
+
+To perform a service on a real-world Kubernetes cluster with more resources than those available on a laptop, the easiest way is to use a managed Kubernetes platform from a cloud provider. We will use Kubernetes Engine on [Google Cloud Platform (GCP)](https://cloud.google.com).
+
+Before anything else, sign up for an account and create a project specifically for this repo. After that, ensure that the GCP SDK is installed locally.  
+```bash
+brew cask install google-cloud-sdk
+```
+
+Or by downloading an installation image [directly from GCP](https://cloud.google.com/sdk/docs/quickstart-macos). Note, that if you haven't already installed Kubectl, then you will need to do so now, which can be done using the GCP SDK,
+
+```bash
+gcloud components install kubectl
+```
+
+We then need to initialise the SDK,
+
+```bash
+gcloud init
+```
+
+Which will open a browser and guide you through the necessary authentication steps. Make sure you pick the project you created, together with a default zone and region (if this has not been set via Compute Engine -> Settings).
+
+### Initializing a K8s cluster
+Using the GCP UI, find the Kubernetes Engine to get the Kubernetes API to start-up. From the CLI, we enter:
+```bash
+gcloud container clusters create k8s-test-cluster --num-nodes 3 --machine-type g1-small
+```
+It's natural for this step to take a couple minutes -- especially if this is your first time using K8s via GCP. Take note that this will automatically switch your `kubectl` context to point to the cluster on GCP, as you will see if you run, `kubectl config get-contexts`. To switch back to the Docker Desktop client use `kubectl config use-context docker-desktop`.
+
+### Launching the containerized ML model scorer on GCP
+
+Run the following commands in sequence:
+```bash
+kubectl create deployment ml-score-api --image=arhumzafar/ml-score-api:latest
+kubectl expose deployment ml-score-api --port 5000 --type=LoadBalancer --name ml-score-api-lb
+```
+
+But, to find the external IP address for the GCP cluster we will need to use,
+
+```bash
+kubectl get services
+```
+
+And then we can test our service on GCP - for example,
+
+```bash
+curl http://35.246.92.213:5000/score \
+    --request POST \
+    --header "Content-Type: application/json" \
+    --data '{"X": [1, 2]}'
+```
+Or, we could again use port forwarding to attach to a single pod - for example,
+
+```bash
+kubectl port-forward ml-score-api-nl4sc 5000:5000
+```
+
+And then in a separate terminal,
+
+```bash
+curl http://localhost:5000/score \
+    --request POST \
+    --header "Content-Type: application/json" \
+    --data '{"X": [1, 2]}'
+```
+
+
+If you are running both with Kubernetes locally and with a cluster on GCP, then you can switch Kubectl [context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/) from one cluster to the other, as follows,
+
+```bash
+kubectl config use-context docker-desktop
+```
+
+Where the list of available contexts can be found using,
+
+```bash
+kubectl config get-contexts
+```
+
+
