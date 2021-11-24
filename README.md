@@ -10,7 +10,9 @@ A typical workflow for deploying a machine learning (ML) model into production -
 The widely-known problem is that configuration details for cloud deployment are specific to each target cloud provider(s) -- *the process, topology, syntax, etc. for Microsoft Azure is not the same as AWS, which again is different for Google Cloud Platform (GCP)*. This means that there’s a ton of prerequisite knowledge that needs to be gained for each cloud provider, which is just too difficult and time consuming. Additionally, this would also mean writing an unnecessary amount of YAML, which is purely [inappropriate software practice](https://news.ycombinator.com/item?id=21101695). All in all, it is almost impossible to test your deployment strategies locally -- especially at scale -- as networking issues can be hard to debug.
 <br>
 <br>
-[Kubernetes (K8s)](https://kubernetes.io/) is a contained-based orchestration platform that addresses the above issues in a seamless manner. To keep things short, it provides a method to define all of a microservices application topologies, as well as their service-level requirements for ensuring continuous availability. What’s most important is that **K8s is cloud provider agnostic**, it can be ran on-prem, and even locally on your machine -- all you need is a Kubernetes cluster. Additionally, Kubernetes’ [kubeflow](https://www.kubeflow.org/), K8’s ML deployment platform, has been the [most popular ML deployment framework](https://blog.kubeflow.org/kubeflow-continues-to-move-to-production#:~:text=Similar%20to%20previous%20years%2C%20Kubeflow,being%20widely%20deployed%20as%20well.&text=Although%20the%20usage%20patterns%20for,components%20in%20their%20ML%20Platform.) over the past 2 years and is becoming a de facto name in the modern ML toolkit. <br>
+[Kubernetes (K8s)](https://kubernetes.io/) is a contained-based orchestration platform that addresses the above issues in a seamless manner. To keep things short, it provides a method to define all of a microservices application topologies, as well as their service-level requirements for ensuring continuous availability. What’s most important is that **K8s is cloud provider agnostic**, it can be ran on-prem, and even locally on your machine -- all you need is a Kubernetes cluster. Additionally, Kubernetes’ [kubeflow](https://www.kubeflow.org/), K8’s ML deployment platform, has been the [most popular ML deployment framework](https://blog.kubeflow.org/kubeflow-continues-to-move-to-production#:~:text=Similar%20to%20previous%20years%2C%20Kubeflow,being%20widely%20deployed%20as%20well.&text=Although%20the%20usage%20patterns%20for,components%20in%20their%20ML%20Platform.) over the past 2 years and is becoming a de facto name in the modern ML toolkit.
+<br>
+<br>
 This README was written to be followed alongside the code in this repo. You’ll find the Python modules, Docker config files, and the K8s instructions that will guide you in taking your ML model and deploying it as a production-level REST API for model scoring. **Please note:** this is not a thorough guide on using K8s and Docker for ML -- *Although I encourage anyone working with ML to learn the two, this repo isn’t the place to do it.*
 <br>
 <br>
@@ -133,3 +135,9 @@ To interact with the Kubernetes cluster you will need the `kubectl` Command Line
 ```bash
 kubectl cluster-info
 ```
+
+This will return something that similar to what's below:
+`Kubernetes master is running at https://kubernetes.docker.internal:6443
+KubeDNS is running at https://kubernetes.docker.internal:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy`
+
+`To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.`
