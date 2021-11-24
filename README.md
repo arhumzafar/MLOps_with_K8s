@@ -298,5 +298,123 @@ Where the list of available contexts can be found using,
 ```bash
 kubectl config get-contexts
 ```
+### Using YAML Files to Define and Deploy the ML Model Scoring Service
+For now, we've been using Kubectl commands to define and deploy the model scoring service. However, that is only fine for demonstrative purposes. In practice, the standard way of defining entire Kubernetes deployments is with YAML files,  posted to the Kubernetes API. The `ml-score-with-flask.yaml` file in the `REST-api-with-flask` directory is an example of how our ML model scoring service can be defined in a single YAML file. 
+
+This can now be deployed using a single command,
+
+```bash
+kubectl apply -f REST-api-with-flask/ml-score-with-flask.yaml
+```
+
+### Using Helm to simplify the process.
+Writing YAML files for Kubernetes can get repetitive and hard to manage, especially if there is a lot of 'copy-paste' involved, when only a handful of parameters need to be changed from one deployment to the next,  but there is a 'wall of YAML' that needs to be modified. Enter [Helm](https://helm.sh//) - a framework for creating, executing and managing Kubernetes deployment templates. What follows is a very high-level demonstration of how Helm can be used to deploy our ML model scoring service - for a comprehensive discussion of Helm's full capabilities (and here are a lot of them), please refer to the [official documentation](https://docs.helm.sh). Seldon-Core can also be deployed using Helm and we will cover this in more detail later on.
+
+### Installing Helm
+
+As before, the easiest way to install Helm onto Mac OS X is to use the Homebrew package manager,
+
+```bash
+brew install kubernetes-helm
+```
+
+Helm relies on a dedicated deployment server, referred to as the 'Tiller', to be running within the same Kubernetes cluster we wish to deploy our applications to. Before we deploy Tiller we need to create a cluster-wide super-user role to assign to it, so that it can create and modify Kubernetes resources in any namespace. To achieve this, we start by creating a [Service Account](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/) that is destined for our tiller. A Service Account is a means by which a pod (and any service running within it), when associated with a Service Accoutn, can authenticate itself to the Kubernetes API, to be able to view, create and modify resources. We create this in the `kube-system` namespace (a common convention) as follows,
+
+```bash
+kubectl --namespace kube-system create serviceaccount tiller
+```
+
+We then create a binding between this Service Account and the `cluster-admin` [Cluster Role](https://kubernetes.io/docs/reference/access-authn-authz/rbac/), which as the name suggest grants cluster-wide admin rights,
+
+```bash
+kubectl create clusterrolebinding tiller \
+    --clusterrole cluster-admin \
+    --serviceaccount=kube-system:tiller
+```
+
+We can now deploy the Helm Tiller to a Kubernetes cluster, with the desired access rights using,
+
+```bash
+helm init --service-account tiller
+```
+
+### Deploying with Helm
+
+To create a fresh Helm deployment definition - referred to as a 'chart' in Helm terminology - run,
+
+```bash
+helm create NAME-OF-YOUR-HELM-CHART
+```
+
+This creates a new directory - e.g. `helm-ml-score-app` as included with this repository - with the following high-level directory structure,
+
+```bash
+helm-ml-score-app/
+ | -- charts/
+ | -- templates/
+ | Chart.yaml
+ | values.yaml
+```
+
+Briefly, the `charts` directory contains other charts that our new chart will depend on (we will not make use of this), the `templates` directory contains our Helm templates, `Chart.yaml` contains core information for our chart (e.g. name and version information) and `values.yaml` contains default values to render our templates with (in the case that no values are set from the command line).
+
+The next step is to delete all of the files in the `templates` directory (apart from `NOTES.txt`), and to replace them with our own. We start with `namespace.yaml` for declaring a namespace for our app,
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.app.namespace }}
+```
+
+Anyone familiar with HTML template frameworks (e.g. Jinja), will be familiar with the use of ``{{}}`` for defining values that will be injected into the rendered template. In this specific instance `.Values.app.namespace` injects the `app.namespace` variable, whose default value defined in `values.yaml`. Next we define a deployment of pods in `deployment.yaml`,
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.app.name }}
+    env: {{ .Values.app.env }}
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.app.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+        env: {{ .Values.app.env }}
+    spec:
+      containers:
+      - image: {{ .Values.app.image }}
+        name: {{ .Values.app.name }}
+        ports:
+        - containerPort: {{ .Values.containerPort }}
+          protocol: TCP
+```
+
+And the details of the load balancer service in `service.yaml`,
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}-lb
+  labels:
+    app: {{ .Values.app.name }}
+  namespace: {{ .Values.app.namespace }}
+spec:
+  type: LoadBalancer
+  ports:
+  - port: {{ .Values.containerPort }}
+    targetPort: {{ .Values.targetPort }}
+  selector:
+    app: {{ .Values.app.name }}
+```
+
 
 
