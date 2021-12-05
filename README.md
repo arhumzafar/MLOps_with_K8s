@@ -26,7 +26,7 @@ We go through the ML deployment process using two approaches:
 Let’s begin by showing how the Python module works and how it integrates with the Dockerfile. The APi is found in `api.py`, alongside the `Dockerfile`, both are inside the `REST-api-with-flask` directory. The contents are shown below:
 
 ```bash
-py-flask-ml-score-api/
+REST-api-with-flask/
 | Dockerfile
 | Pipfile
 | Pipfile.lock
