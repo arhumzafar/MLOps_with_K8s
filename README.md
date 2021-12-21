@@ -416,5 +416,86 @@ spec:
     app: {{ .Values.app.name }}
 ```
 
+So here, what we have done, is split-out each component of the deployment details from `ml-score-with-flask.yaml` into its own file and then define template variables for each parameter of the configuration that is most likely to change from one deployment to the next. To test and examine the rendered template, without having to attempt a deployment, run,
 
+```bash
+helm install helm-ml-score-app --debug --dry-run
+```
+
+If you are happy with the results of the 'dry run', then execute the deployment and generate a release from the chart using,
+
+```bash
+helm install helm-ml-score-app --name test-ml-app
+```
+
+This will automatically print the status of the release, together with the name that Helm has ascribed to it (e.g. 'willing-yak') and the contents of `NOTES.txt` rendered to the terminal. To list all available Helm releases and their names use,
+
+```bash
+helm list
+```
+
+And to the status of all their constituent components (e.g. pods, replication controllers, service, etc.) use for example,
+
+```bash
+helm status test-ml-app
+```
+
+The ML scoring service can now be tested in exactly the same way as we have done previously (above). Once you have convinced yourself that it's working as expected, the release can be deleted using,
+
+```bash
+helm delete test-ml-app
+```
+### Building the Docker Image for use with Seldon
+
+Seldon requires that the Docker image for the ML scoring service be structured in a particular way:
+
+- the ML model has to be wrapped in a Python class with a `predict` method with a particular signature (or interface) - for example, in `MLScore.py` (deliberately named after the Python class contained within it) we have,
+
+```python
+class MLScore:
+    """
+    Model template. You can load your model parameters in __init__ from
+    a location accessible at runtime
+    """
+
+    def __init__(self):
+        """
+        Load models and add any initialization parameters (these will
+        be passed at runtime from the graph definition parameters
+        defined in your seldondeployment kubernetes resource manifest).
+        """
+        print("Initializing")
+
+    def predict(self, X, features_names):
+        """
+        Return a prediction.
+
+        Parameters
+        ----------
+        X : array-like
+        feature_names : array of feature names (optional)
+        """
+        print("Predict called - will run identity function")
+        return X
+```
+
+- the `seldon-core` Python package must be installed (we use `pipenv` to manage dependencies as discussed above and in the Appendix below); and,
+- the container starts by running the Seldon service using the `seldon-core-microservice` entry-point provided by the `seldon-core` package - both this and the point above can be seen the `DockerFile`,
+
+```docker
+FROM python:3.6-slim
+COPY . /app
+WORKDIR /app
+RUN pip install pipenv
+RUN pipenv install
+EXPOSE 5000
+
+# Define environment variable
+ENV MODEL_NAME MLScore
+ENV API_TYPE REST
+ENV SERVICE_TYPE MODEL
+ENV PERSISTENCE 0
+
+CMD pipenv run seldon-core-microservice $MODEL_NAME $API_TYPE --service-type $SERVICE_TYPE --persistence $PERSISTENCE
+```
 
