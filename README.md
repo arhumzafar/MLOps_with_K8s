@@ -483,7 +483,7 @@ class MLScore:
 - the container starts by running the Seldon service using the `seldon-core-microservice` entry-point provided by the `seldon-core` package - both this and the point above can be seen the `DockerFile`,
 
 ```docker
-FROM python:3.6-slim
+FROM python:3.8-slim
 COPY . /app
 WORKDIR /app
 RUN pip install pipenv
